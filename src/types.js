@@ -32,25 +32,21 @@ const resolveId = (source) => {
 export const UserType = new GraphQLObjectType({
   name: 'User',
   interfaces: [ NodeInterface ],
+  // Note that this is now a function
   fields: () => {
     return {
       id: {
         type: new GraphQLNonNull(GraphQLID),
         resolve: resolveId
       },
-      name: {
-        type: new GraphQLNonNull(GraphQLString)
-      },
-      about: {
-        type: new GraphQLNonNull(GraphQLString)
-      },
+      name: { type: new GraphQLNonNull(GraphQLString) },
+      about: { type: new GraphQLNonNull(GraphQLString) },
       friends: {
         type: new GraphQLList(UserType),
         resolve(source) {
           return loaders.getFriendIdsForUser(source).then((rows) => {
             const promises = rows.map((row) => {
               const friendNodeId = tables.dbIdToNodeId(row.user_id_b, row.__tableName);
-
               return loaders.getNodeById(friendNodeId);
             });
             return Promise.all(promises);
