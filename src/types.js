@@ -12,6 +12,10 @@ import {
 import * as tables from './tables';
 import * as loaders from './loaders';
 
+import {
+  connectionDefinitions
+} from 'graphql-relay';
+
 export const NodeInterface = new GraphQLInterfaceType({
   name: 'Node',
   fields: {
@@ -30,50 +34,6 @@ export const NodeInterface = new GraphQLInterfaceType({
 const resolveId = (source) => {
   return tables.dbIdToNodeId(source.id, source.__tableName);
 };
-
-const PageInfoType = new GraphQLObjectType({
-  name: 'PageInfo',
-  fields: {
-    hasNextPage: {
-      type: new GraphQLNonNull(GraphQLBoolean)
-    },
-    hasPreviousPage: {
-      type: new GraphQLNonNull(GraphQLBoolean)
-    },
-    startCursor: {
-      type: GraphQLString,
-    },
-    endCursor: {
-      type: GraphQLString,
-    }
-  }
-});
-
-const PostEdgeType = new GraphQLObjectType({
-  name: 'PostEdge',
-  fields: () => {
-    return {
-      cursor: {
-        type: new GraphQLNonNull(GraphQLString)
-      },
-      node: {
-        type: new GraphQLNonNull(PostType)
-      }
-    }
-  }
-});
-
-const PostsConnectionType = new GraphQLObjectType({
-  name: 'PostsConnection',
-  fields: {
-    pageInfo: {
-      type: new GraphQLNonNull(PageInfoType)
-    },
-    edges: {
-      type: new GraphQLList(PostEdgeType)
-    }
-  }
-});
 
 export const UserType = new GraphQLObjectType({
   name: 'User',
@@ -103,14 +63,14 @@ export const UserType = new GraphQLObjectType({
         type: PostsConnectionType,
         args: {
           after: {
-            type: GraphQLString,
+            type: GraphQLString
           },
           first: {
             type: GraphQLInt
           },
         },
-        resolve(source, args){
-          return loaders.getPostIdsForUser(source, args).then(({ rows, pageInfo }) => {
+        resolve(source, args, context) {
+          return loaders.getPostIdsForUser(source, args, context).then(({ rows, pageInfo }) => {
             const promises = rows.map((row) => {
               const postNodeId = tables.dbIdToNodeId(row.id, row.__tableName);
               return loaders.getNodeById(postNodeId).then((node) => {
@@ -121,12 +81,14 @@ export const UserType = new GraphQLObjectType({
                 return edge;
               });
             });
+
             return Promise.all(promises).then((edges) => {
               return {
                 edges,
                 pageInfo
               }
             });
+
           })
         }
       }
@@ -150,3 +112,5 @@ export const PostType = new GraphQLObjectType({
     }
   }
 });
+
+const { connectionType: PostsConnectionType } = connectionDefinitions({ nodeType: PostType });
